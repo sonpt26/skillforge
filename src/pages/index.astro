@@ -1,0 +1,231 @@
+---
+import Layout from "../layouts/Layout.astro";
+import SkillCard from "../components/SkillCard.astro";
+import { skills } from "../data/skills";
+
+const features = [
+  {
+    title: "Specialist, not generalist",
+    body: "Each skill is built for a real workflow — pipeline reviews, marketing briefs, onboarding — not a generic assistant.",
+  },
+  {
+    title: "Configured to your business",
+    body: "A short private interview captures the context that makes the skill yours: tone, tools, guardrails, source-of-truth.",
+  },
+  {
+    title: "Runs on your agent",
+    body: "Delivered as a portable skill folder. Plug it into Claude Code or any compatible agent. No lock-in, no hosted access.",
+  },
+  {
+    title: "Privacy by default",
+    body: "Your configuration never leaves the room it's built in. The skill executes locally, against systems you already trust.",
+  },
+];
+
+const testimonials = [
+  {
+    quote:
+      "It replaced three brittle internal prompts and a custom integration. Our RevOps team onboarded it in a day.",
+    name: "Maya Lindqvist",
+    role: "Head of RevOps, Northwind",
+  },
+  {
+    quote:
+      "The interview felt less like a form and more like a strategy call. The resulting skill knew our brand on day one.",
+    name: "Daniel Osei",
+    role: "Marketing Director, Kestrel",
+  },
+  {
+    quote:
+      "Our policy answers went from 'ask HR' to 'ask the skill.' That alone saved us ~8 hours a week.",
+    name: "Priya Raman",
+    role: "People Lead, Loomstack",
+  },
+];
+---
+
+<Layout>
+  <section class="border-b border-ink-200">
+    <div class="max-w-6xl mx-auto px-6 py-24 md:py-32">
+      <div class="max-w-3xl">
+        <span
+          class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-ink-500 mb-6"
+        >
+          <span class="inline-block w-1.5 h-1.5 bg-accent-500 rounded-full"></span>
+          Agent skills, configured for your team
+        </span>
+        <h1
+          class="text-4xl md:text-6xl font-medium tracking-tight text-ink-900 leading-[1.05] mb-6"
+        >
+          Specialized AI skills,
+          <br />
+          <span class="text-ink-500">tailored to how your company actually works.</span>
+        </h1>
+        <p class="text-lg text-ink-600 leading-relaxed max-w-2xl mb-10">
+          Skillforge sells focused agent skills — Sales, Marketing, HR, Google
+          Workspace, and more — that we customize to your playbook through a
+          short private interview. Download the skill folder and run it with
+          Claude Code, on your machine, against your data.
+        </p>
+        <div class="flex flex-wrap items-center gap-4">
+          <a
+            href="#catalog"
+            class="px-5 py-2.5 bg-ink-900 text-ink-50 text-sm font-medium hover:bg-ink-700 transition"
+          >
+            Browse the catalog
+          </a>
+          <a
+            href="#features"
+            class="px-5 py-2.5 border border-ink-300 text-ink-800 text-sm hover:border-ink-900 transition"
+          >
+            How it works
+          </a>
+        </div>
+      </div>
+
+      <div class="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 border-t border-ink-200 pt-10">
+        <div>
+          <div class="text-2xl font-medium text-ink-900">5</div>
+          <div class="text-xs text-ink-500 uppercase tracking-wider mt-1">
+            Skill families
+          </div>
+        </div>
+        <div>
+          <div class="text-2xl font-medium text-ink-900">~12 min</div>
+          <div class="text-xs text-ink-500 uppercase tracking-wider mt-1">
+            Interview time
+          </div>
+        </div>
+        <div>
+          <div class="text-2xl font-medium text-ink-900">100%</div>
+          <div class="text-xs text-ink-500 uppercase tracking-wider mt-1">
+            Local execution
+          </div>
+        </div>
+        <div>
+          <div class="text-2xl font-medium text-ink-900">0</div>
+          <div class="text-xs text-ink-500 uppercase tracking-wider mt-1">
+            Vendor lock-in
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="border-b border-ink-200">
+    <div class="max-w-6xl mx-auto px-6 py-20">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+        <div>
+          <span
+            class="text-[11px] uppercase tracking-[0.18em] text-ink-500 mb-2 inline-block"
+          >
+            Why Skillforge
+          </span>
+          <h2 class="text-3xl md:text-4xl font-medium tracking-tight text-ink-900">
+            Built for the gap between prompt libraries
+            <br />
+            and custom engineering.
+          </h2>
+        </div>
+        <p class="text-ink-500 text-sm md:max-w-xs">
+          Generic assistants stall on real workflows. Bespoke tooling is slow and expensive.
+          Skillforge sits in between.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-px bg-ink-200 border border-ink-200">
+        {
+          features.map((f) => (
+            <div class="bg-ink-50 p-8">
+              <h3 class="text-base font-medium text-ink-900 mb-3 tracking-tight">
+                {f.title}
+              </h3>
+              <p class="text-sm text-ink-600 leading-relaxed">{f.body}</p>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section id="catalog" class="border-b border-ink-200 bg-white">
+    <div class="max-w-6xl mx-auto px-6 py-20">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+        <div>
+          <span
+            class="text-[11px] uppercase tracking-[0.18em] text-ink-500 mb-2 inline-block"
+          >
+            Catalog
+          </span>
+          <h2 class="text-3xl md:text-4xl font-medium tracking-tight text-ink-900">
+            Pick the skill closest to your work.
+            <br />
+            <span class="text-ink-500">We'll tailor it together.</span>
+          </h2>
+        </div>
+        <p class="text-ink-500 text-sm md:max-w-xs">
+          Every card leads into a private interview room. The more specific you are,
+          the sharper your skill.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {skills.map((skill) => <SkillCard skill={skill} />)}
+      </div>
+    </div>
+  </section>
+
+  <section id="testimonials" class="border-b border-ink-200">
+    <div class="max-w-6xl mx-auto px-6 py-20">
+      <div class="mb-12">
+        <span
+          class="text-[11px] uppercase tracking-[0.18em] text-ink-500 mb-2 inline-block"
+        >
+          Customers
+        </span>
+        <h2 class="text-3xl md:text-4xl font-medium tracking-tight text-ink-900">
+          Teams shipping with skills from Skillforge.
+        </h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {
+          testimonials.map((t) => (
+            <figure class="border border-ink-200 bg-ink-50 p-6 flex flex-col">
+              <blockquote class="text-ink-700 leading-relaxed text-[15px] flex-1">
+                "{t.quote}"
+              </blockquote>
+              <figcaption class="mt-6 pt-4 border-t border-ink-200">
+                <div class="text-sm font-medium text-ink-900">{t.name}</div>
+                <div class="text-xs text-ink-500 mt-0.5">{t.role}</div>
+              </figcaption>
+            </figure>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="max-w-6xl mx-auto px-6 py-24">
+      <div class="border border-ink-200 bg-ink-900 text-ink-50 p-10 md:p-14 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+        <div class="max-w-xl">
+          <h2 class="text-2xl md:text-3xl font-medium tracking-tight mb-3">
+            Ready to configure your skill?
+          </h2>
+          <p class="text-ink-300 text-sm leading-relaxed">
+            Pick a skill from the catalog. You'll enter a private room, answer a
+            short interview, and walk out with a skill folder ready to drop into
+            your agent.
+          </p>
+        </div>
+        <a
+          href="#catalog"
+          class="px-6 py-3 bg-ink-50 text-ink-900 text-sm font-medium hover:bg-white transition whitespace-nowrap"
+        >
+          Take me to the catalog →
+        </a>
+      </div>
+    </div>
+  </section>
+</Layout>

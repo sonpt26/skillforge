@@ -1,0 +1,8 @@
+# Copy to `.dev.vars` and fill in. Wrangler auto-loads this file when you
+# run `wrangler dev`. These values are ONLY used for local development — they
+# are NOT pushed to Cloudflare. To set production secrets, run:
+#     ./scripts/push-secrets.sh
+
+ANTHROPIC_API_KEY=
+DEEPSEEK_API_KEY=
+SKILLFORGE_PROVIDER=anthropic

@@ -1,0 +1,165 @@
+---
+import type { Skill } from "../data/skills";
+
+interface Props {
+  skill: Skill;
+}
+
+const { skill } = Astro.props;
+const advisor = skill.advisor;
+
+const rating = advisor.stats.avgRating;
+const fullStars = Math.round(rating);
+const reviewCount = new Intl.NumberFormat("en-US").format(
+  advisor.stats.reviewCount,
+);
+---
+
+<article
+  class="group flex flex-col border border-ink-200 bg-white hover:border-ink-400 transition-colors overflow-hidden"
+>
+  <div class="px-6 pt-6 pb-5 border-b border-ink-200 bg-ink-50/60">
+    <div class="flex items-center justify-between mb-4">
+      <span class="text-[11px] uppercase tracking-[0.14em] text-ink-500">
+        {skill.category}
+      </span>
+      <span class="text-[11px] uppercase tracking-[0.14em] text-accent-600">
+        Advised by
+      </span>
+    </div>
+    <div class="flex items-start gap-3">
+      <img
+        src={advisor.portraitUrl}
+        alt={advisor.name}
+        loading="lazy"
+        width="56"
+        height="56"
+        class="w-14 h-14 rounded-full object-cover border border-ink-200 grayscale-[15%] shrink-0"
+      />
+      <div class="min-w-0 flex-1">
+        <div class="text-sm font-medium text-ink-900 tracking-tight truncate">
+          {advisor.name}
+        </div>
+        <div
+          class="text-xs text-ink-600 leading-snug mt-0.5 line-clamp-2"
+          style="min-height: 2.25em;"
+        >
+          {advisor.title}
+        </div>
+        <div class="flex items-center gap-2 mt-1.5">
+          <div class="flex items-center gap-0.5" aria-label={`${rating} out of 5 stars`}>
+            {
+              [0, 1, 2, 3, 4].map((i) => (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill={i < fullStars ? "currentColor" : "none"}
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  class={i < fullStars ? "text-accent-500" : "text-ink-300"}
+                >
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+              ))
+            }
+          </div>
+          <span class="text-[11px] text-ink-700 font-medium">{rating.toFixed(1)}</span>
+          <span class="text-[11px] text-ink-400">·</span>
+          <span class="text-[11px] text-ink-500">{reviewCount} reviews</span>
+        </div>
+      </div>
+    </div>
+    <ul class="mt-4 space-y-1.5">
+      {
+        advisor.credentials.map((c) => (
+          <li class="text-xs text-ink-600 leading-relaxed flex gap-2">
+            <span class="mt-[5px] w-1 h-1 rounded-full bg-accent-500 shrink-0" />
+            <span class="line-clamp-2" style="min-height: 2.6em;">{c}</span>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+
+  <div class="px-6 pt-6 flex-1 flex flex-col">
+    <h3 class="text-lg font-medium text-ink-900 tracking-tight mb-2">
+      {skill.name}
+    </h3>
+    <p class="text-sm text-ink-600 leading-relaxed mb-4">
+      {skill.tagline}
+    </p>
+    <p class="text-sm text-ink-500 leading-relaxed mb-5 flex-1">
+      {skill.description}
+    </p>
+
+    <ul class="flex flex-wrap gap-2 mb-6">
+      {
+        skill.highlights.map((h) => (
+          <li class="text-xs text-ink-600 border border-ink-200 px-2 py-1 rounded-sm">
+            {h}
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+
+  <a
+    href={`/app/chat/${skill.id}`}
+    class="cta group/cta relative flex items-center justify-between gap-3 bg-ink-900 hover:bg-accent-600 text-ink-50 px-6 py-4 text-sm font-medium tracking-tight transition-colors overflow-hidden"
+  >
+    <span class="shimmer" aria-hidden></span>
+    <span class="relative z-10">Take me to the private room</span>
+    <span class="relative z-10 inline-flex items-center gap-2">
+      <span class="text-[11px] uppercase tracking-[0.14em] opacity-70 hidden sm:inline">
+        Start now
+      </span>
+      <span class="arrow inline-block">→</span>
+    </span>
+  </a>
+</article>
+
+<style>
+  .cta .arrow {
+    animation: nudge 1.8s ease-in-out infinite;
+  }
+
+  .cta:hover .arrow {
+    animation-duration: 0.9s;
+  }
+
+  @keyframes nudge {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    50% {
+      transform: translateX(5px);
+    }
+  }
+
+  .cta .shimmer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 20%,
+      rgba(255, 255, 255, 0.14) 50%,
+      transparent 80%
+    );
+    transform: translateX(-110%);
+    animation: shimmer 3.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-110%);
+    }
+    55%,
+    100% {
+      transform: translateX(110%);
+    }
+  }
+</style>

@@ -1,0 +1,109 @@
+---
+import type { Advisor } from "../data/skills";
+
+interface Props {
+  advisor: Advisor;
+}
+
+const { advisor } = Astro.props;
+
+function compact(n: number): string {
+  if (n >= 1000) {
+    return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + "k";
+  }
+  return new Intl.NumberFormat("en-US").format(n);
+}
+---
+
+<section class="border border-ink-200 bg-white mb-8">
+  <div class="p-6 md:p-8 border-b border-ink-200 flex flex-col md:flex-row gap-6 md:gap-8">
+    <img
+      src={advisor.portraitUrl}
+      alt={advisor.name}
+      loading="lazy"
+      width="112"
+      height="112"
+      class="w-24 h-24 md:w-28 md:h-28 rounded-full object-cover border border-ink-200 grayscale-[10%] shrink-0"
+    />
+    <div class="flex-1 min-w-0">
+      <div class="text-[11px] uppercase tracking-[0.18em] text-accent-600 mb-2">
+        Your advisor
+      </div>
+      <h2 class="text-xl md:text-2xl font-medium tracking-tight text-ink-900 mb-1">
+        {advisor.name}
+      </h2>
+      <p class="text-sm text-ink-600 mb-3">{advisor.title}</p>
+      <p class="text-sm text-ink-600 leading-relaxed max-w-2xl">{advisor.bio}</p>
+
+      {advisor.credentials.length > 0 && (
+        <ul class="mt-4 space-y-1.5">
+          {advisor.credentials.map((c) => (
+            <li class="text-xs text-ink-600 leading-relaxed flex gap-2">
+              <span class="mt-[5px] w-1 h-1 rounded-full bg-accent-500 shrink-0" />
+              <span>{c}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-px bg-ink-200">
+    <div class="bg-ink-50 px-5 py-4">
+      <div class="text-xl font-medium text-ink-900 tracking-tight">
+        {compact(advisor.stats.usersHelped)}+
+      </div>
+      <div class="text-[11px] uppercase tracking-[0.14em] text-ink-500 mt-1">
+        Users helped
+      </div>
+    </div>
+    <div class="bg-ink-50 px-5 py-4">
+      <div class="text-xl font-medium text-ink-900 tracking-tight">
+        {compact(advisor.stats.downloads)}+
+      </div>
+      <div class="text-[11px] uppercase tracking-[0.14em] text-ink-500 mt-1">
+        Skill downloads
+      </div>
+    </div>
+    <div class="bg-ink-50 px-5 py-4">
+      <div class="flex items-baseline gap-1.5">
+        <span class="text-xl font-medium text-ink-900 tracking-tight">
+          {advisor.stats.avgRating.toFixed(1)}
+        </span>
+        <span class="text-sm text-ink-500">/ 5</span>
+      </div>
+      <div class="text-[11px] uppercase tracking-[0.14em] text-ink-500 mt-1">
+        {advisor.stats.reviewCount} reviews
+      </div>
+    </div>
+    <div class="bg-ink-50 px-5 py-4">
+      <div class="text-xl font-medium text-ink-900 tracking-tight">
+        {advisor.yearsExperience}+
+      </div>
+      <div class="text-[11px] uppercase tracking-[0.14em] text-ink-500 mt-1">
+        Years in the field
+      </div>
+    </div>
+  </div>
+
+  {advisor.reviews.length > 0 && (
+    <div class="p-6 md:p-8 border-t border-ink-200">
+      <div class="text-[11px] uppercase tracking-[0.18em] text-ink-500 mb-4">
+        What customers say
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {advisor.reviews.map((r) => (
+          <figure class="border border-ink-200 bg-ink-50 p-4">
+            <blockquote class="text-sm text-ink-700 leading-relaxed">
+              "{r.quote}"
+            </blockquote>
+            <figcaption class="mt-3 pt-3 border-t border-ink-200 text-xs">
+              <div class="text-ink-900 font-medium">{r.name}</div>
+              <div class="text-ink-500 mt-0.5">{r.role}</div>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </div>
+  )}
+</section>
