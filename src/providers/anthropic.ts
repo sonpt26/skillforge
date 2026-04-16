@@ -41,7 +41,7 @@ export function createAnthropicProvider(apiKey: string): Provider {
             },
           ],
           output_config: {
-            format: zodOutputFormat(BotMessageResponseSchema, "bot_message"),
+            format: zodOutputFormat(BotMessageResponseSchema),
           },
         });
 

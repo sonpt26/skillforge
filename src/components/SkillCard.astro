@@ -105,9 +105,11 @@ const reviewCount = new Intl.NumberFormat("en-US").format(
     </ul>
   </div>
 
-  <a
-    href={`/app/chat/${skill.id}`}
-    class="cta group/cta relative flex items-center justify-between gap-3 bg-ink-900 hover:bg-accent-600 text-ink-50 px-6 py-4 text-sm font-medium tracking-tight transition-colors overflow-hidden"
+  <button
+    type="button"
+    data-skill-id={skill.id}
+    class="cta group/cta relative flex items-center justify-between gap-3 bg-ink-900 hover:bg-accent-600 text-ink-50 px-6 py-4 text-sm font-medium tracking-tight transition-colors overflow-hidden text-left w-full cursor-pointer"
+    onclick={`window.dispatchEvent(new CustomEvent('skillforge:open-modal', { detail: { skillId: '${skill.id}' } }))`}
   >
     <span class="shimmer" aria-hidden></span>
     <span class="relative z-10">Take me to the private room</span>
@@ -117,7 +119,7 @@ const reviewCount = new Intl.NumberFormat("en-US").format(
       </span>
       <span class="arrow inline-block">→</span>
     </span>
-  </a>
+  </button>
 </article>
 
 <style>

@@ -1,5 +1,7 @@
-import { getSchema, type SkillSchema, type Slot } from "../data/schemas";
-import { getTemplate } from "../data/skill-templates";
+import { getKhaiVanSkill, type KhaiVanSkill } from "../data/khai-van-skills";
+import { makeReportId, type Report } from "../data/reports";
+import { getTemplate, type SkillTemplate } from "../data/skill-templates";
+import { buildContext, render } from "./context";
 
 export type SkillFile = {
   path: string;
@@ -11,112 +13,55 @@ export type BuildResult = {
   files: SkillFile[];
 };
 
-const APPROVAL_BLOCKS: Record<string, string> = {
-  auto:
-    "Act autonomously on routine, low-risk tasks. Summarize what you did at the end of every work session.",
-  confirm:
-    "Before any action that leaves the team's systems (sending email, writing to a system of record, calling an external API), confirm intent with the user and wait for explicit approval.",
-  review:
-    "Produce drafts only. A human reviews every output before anything ships. Do not auto-execute tasks.",
-};
-
-const PERMISSIONS_BLOCKS: Record<string, string> = {
-  strict:
-    "Never modify sharing or ACL settings. If a task requires a permission change, surface the request and wait for a human to perform it.",
-  domain:
-    "Domain-only sharing is acceptable. Do not grant access outside the primary Google Workspace domain.",
-  flexible:
-    "Permission changes are allowed, but every action must be logged in the team's shared audit document with a timestamp and reason.",
-};
-
-const CONFIDENTIALITY_BLOCKS: Record<string, string> = {
-  strict:
-    "Redact names and identifying details by default. Use role descriptors (\"a senior engineer\", \"a new hire\") unless the user explicitly authorizes naming an individual.",
-  standard:
-    "Team-level context is acceptable. Avoid referencing individual employees by name in group summaries unless the context warrants it.",
-  open:
-    "Internal-only context may reference individuals and teams by name. Do not apply proactive redaction unless the user asks.",
-};
-
-function labelFor(slot: Slot, id: unknown): string {
-  if (typeof id !== "string") return String(id ?? "");
-  return slot.options?.find((o) => o.id === id)?.label ?? id;
-}
-
-function listOf(items: string[]): string {
-  if (items.length === 0) return "(none provided)";
-  return items.map((i) => `- ${i}`).join("\n");
-}
-
-function buildContext(
-  schema: SkillSchema,
+/**
+ * Coach output — given a completed profile for a KhaiVanSkill, produce the
+ * human-readable Report the user reviews before Skill Forge runs.
+ *
+ * Phase 2 renders the report via pure interpolation of `khaiVan.reportTemplate`.
+ * Later phases can swap this for an LLM pass (e.g. to tighten prose or synthesize
+ * across slots) without changing the caller's contract.
+ */
+export function renderReport(
+  khaiVan: KhaiVanSkill,
   profile: Record<string, unknown>,
-): Record<string, string> {
-  const ctx: Record<string, string> = {};
-
-  for (const slot of schema.slots) {
-    const raw = profile[slot.key];
-
-    if (slot.kind === "text") {
-      ctx[slot.key] = typeof raw === "string" ? raw : "(not provided)";
-      ctx[`${slot.key}Label`] = ctx[slot.key];
-      continue;
-    }
-
-    if (slot.kind === "choice") {
-      const label = labelFor(slot, raw);
-      ctx[slot.key] = typeof raw === "string" ? raw : "";
-      ctx[`${slot.key}Label`] = label;
-      continue;
-    }
-
-    if (slot.kind === "multi") {
-      const ids = Array.isArray(raw) ? raw.filter((v): v is string => typeof v === "string") : [];
-      const labels = ids.map((id) => labelFor(slot, id));
-      ctx[slot.key] = ids.join(",");
-      ctx[`${slot.key}Labels`] = labels.join(", ");
-      ctx[`${slot.key}List`] = listOf(labels);
-    }
-  }
-
-  const approval = typeof profile.approval === "string" ? profile.approval : "confirm";
-  ctx.approvalBlock = APPROVAL_BLOCKS[approval] ?? APPROVAL_BLOCKS.confirm;
-
-  if (typeof profile.permissions === "string") {
-    ctx.permissionsBlock =
-      PERMISSIONS_BLOCKS[profile.permissions] ?? PERMISSIONS_BLOCKS.strict;
-  }
-  if (typeof profile.confidentiality === "string") {
-    ctx.confidentialityBlock =
-      CONFIDENTIALITY_BLOCKS[profile.confidentiality] ?? CONFIDENTIALITY_BLOCKS.standard;
-  }
-
-  if (typeof profile.stages === "string") {
-    const stages = profile.stages
-      .split(/[,\n]/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    ctx.stagesList = listOf(stages);
-  }
-
-  return ctx;
+  opts?: { userId?: string; version?: number },
+): Report {
+  const userId = opts?.userId ?? "anonymous";
+  const version = opts?.version ?? 1;
+  const ctx = buildContext(khaiVan.slots, profile);
+  const markdown = render(khaiVan.reportTemplate, ctx);
+  const now = new Date().toISOString();
+  return {
+    id: makeReportId(userId, khaiVan.id, version),
+    userId,
+    khaiVanSkillId: khaiVan.id,
+    version,
+    status: "draft",
+    createdAt: now,
+    updatedAt: now,
+    data: profile,
+    markdown,
+  };
 }
 
-function render(template: string, ctx: Record<string, string>): string {
-  return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key: string) =>
-    Object.prototype.hasOwnProperty.call(ctx, key) ? ctx[key] : match,
-  );
-}
-
-export function buildSkill(
-  skillId: string,
-  profile: Record<string, unknown>,
+/**
+ * Skill Forge — given the user's confirmed Report and a SkillTemplate, produce
+ * the final personalized skill folder (SKILL.md + README.md + config.json).
+ *
+ * Phase 2 forges via pure interpolation of `template.skillBody`/`skillDescription`
+ * against the Report's data. The intent of an LLM-driven remix (per the product
+ * description — unique, non-shareable outputs) is deferred to Phase 2b; plugging
+ * it in means replacing the `render(...)` calls below with an LLM provider call
+ * that receives `(template, report)` and returns the final body.
+ */
+export function forgeSkill(
+  template: SkillTemplate,
+  report: Report,
 ): BuildResult | null {
-  const schema = getSchema(skillId);
-  const template = getTemplate(skillId);
-  if (!schema || !template) return null;
+  const khaiVan = getKhaiVanSkill(report.khaiVanSkillId);
+  if (!khaiVan) return null;
 
-  const ctx = buildContext(schema, profile);
+  const ctx = buildContext(khaiVan.slots, report.data);
   const description = render(template.skillDescription, ctx);
   const body = render(template.skillBody, ctx);
 
@@ -155,9 +100,11 @@ re-run the interview. Your new skill folder will supersede this one.
 
   const config = JSON.stringify(
     {
-      skillId,
+      templateId: template.id,
+      khaiVanSkillId: khaiVan.id,
+      reportId: report.id,
       generatedAt: new Date().toISOString(),
-      profile,
+      profile: report.data,
     },
     null,
     2,
@@ -171,4 +118,25 @@ re-run the interview. Your new skill folder will supersede this one.
       { path: `${template.folderName}/config.json`, content: config },
     ],
   };
+}
+
+/**
+ * Legacy one-shot entry point: `(templateId, profile)` → final skill folder.
+ *
+ * Retained so `/api/finalize` can keep its current request shape. Internally it
+ * now runs the Phase 2 two-step pipeline (renderReport → forgeSkill) so there is
+ * a single forge implementation. Callers that need the intermediate Report (UI
+ * preview, persistence in later phases) should call `renderReport` and
+ * `forgeSkill` directly.
+ */
+export function buildSkill(
+  templateId: string,
+  profile: Record<string, unknown>,
+): BuildResult | null {
+  const template = getTemplate(templateId);
+  if (!template) return null;
+  const khaiVan = getKhaiVanSkill(template.khaiVanSkillId);
+  if (!khaiVan) return null;
+  const report = renderReport(khaiVan, profile);
+  return forgeSkill(template, report);
 }

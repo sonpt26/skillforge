@@ -1,7 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { getKhaiVanSkill } from "../data/khai-van-skills";
+import type { Report } from "../data/reports";
+import { getTemplate } from "../data/skill-templates";
 import type { BotMessage, TranscriptTurn, UserTurn } from "../lib/protocol";
-import { reconstructProfile } from "../lib/profile";
-import SkillPreview from "./SkillPreview";
+import { renderReport } from "../lib/skill-builder";
+import {
+  findReusableReportLocal,
+  listReportsLocal,
+  nextReportVersion,
+  REPORTS_UPDATED_EVENT,
+  upsertReport,
+} from "../lib/storage";
+
+type AuthState =
+  | { kind: "checking" }
+  | { kind: "signed_in"; user: { id: string; email: string } }
+  | { kind: "signed_out" };
+
+function openEntryModal(skillId: string) {
+  window.dispatchEvent(
+    new CustomEvent("skillforge:open-modal", { detail: { skillId } }),
+  );
+}
 
 type Props = {
   skillId: string;
@@ -16,14 +36,34 @@ export default function ChatRoom({
   advisorName,
   advisorPortraitUrl,
 }: Props) {
-  const advisorFirstName = advisorName.split(" ")[0];
+  const [auth, setAuth] = useState<AuthState>({ kind: "checking" });
   const [transcript, setTranscript] = useState<TranscriptTurn[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [textDraft, setTextDraft] = useState("");
   const [multiDraft, setMultiDraft] = useState<Set<string>>(new Set());
+  const [editingReport, setEditingReport] = useState(false);
+  const [reusableReport, setReusableReport] = useState<Report | null>(null);
+  const [showReuseBanner, setShowReuseBanner] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const didInit = useRef(false);
+
+  useEffect(() => {
+    if (auth.kind !== "checking") return;
+    void (async () => {
+      try {
+        const res = await fetch("/api/me");
+        const data = (await res.json()) as { user?: { id: string; email: string } | null };
+        if (data.user) setAuth({ kind: "signed_in", user: data.user });
+        else setAuth({ kind: "signed_out" });
+      } catch {
+        setAuth({ kind: "signed_out" });
+      }
+    })();
+  }, [auth.kind]);
+
+  const template = useMemo(() => getTemplate(skillId), [skillId]);
+  const khaiVanSkillId = template?.khaiVanSkillId ?? null;
 
   const lastBot = useMemo(() => {
     for (let i = transcript.length - 1; i >= 0; i--) {
@@ -35,19 +75,49 @@ export default function ChatRoom({
 
   const isDone = lastBot?.type === "done";
   const awaitingChoice = lastBot?.type === "choice";
-  const awaitingText = !isDone && (!lastBot || lastBot.type === "text");
   const doneProfile = isDone && lastBot?.type === "done" ? lastBot.profile : null;
-  const liveProfile = useMemo(() => reconstructProfile(transcript), [transcript]);
+
+  useEffect(() => {
+    if (isDone) setEditingReport(false);
+  }, [isDone, lastBot]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [transcript, loading]);
 
   useEffect(() => {
-    if (didInit.current) return;
+    if (auth.kind !== "signed_in" || didInit.current) return;
     didInit.current = true;
+
+    if (khaiVanSkillId) {
+      const reusable = findReusableReportLocal(khaiVanSkillId);
+      if (reusable) {
+        setReusableReport(reusable);
+        setShowReuseBanner(true);
+        return;
+      }
+    }
+
     void sendTurn([]);
-  }, []);
+  }, [auth.kind, khaiVanSkillId]);
+
+  function acceptReuse() {
+    if (!reusableReport) return;
+    const doneMsg: BotMessage = {
+      type: "done",
+      summary:
+        "Welcome back — I've loaded your answers from a previous session. Review the report on the right, edit anything that's changed, and forge when ready.",
+      profile: reusableReport.data,
+    };
+    setTranscript([{ role: "bot", message: doneMsg }]);
+    setShowReuseBanner(false);
+  }
+
+  function declineReuse() {
+    setReusableReport(null);
+    setShowReuseBanner(false);
+    void sendTurn([]);
+  }
 
   async function sendTurn(nextTranscript: TranscriptTurn[]) {
     setLoading(true);
@@ -58,6 +128,11 @@ export default function ChatRoom({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ skillId, transcript: nextTranscript }),
       });
+      if (res.status === 401 || res.status === 403) {
+        setAuth({ kind: "signed_out" });
+        didInit.current = false;
+        return;
+      }
       if (!res.ok) {
         const errBody = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(errBody.error ?? `Request failed (${res.status})`);
@@ -95,8 +170,20 @@ export default function ChatRoom({
     void sendTurn(next);
   }
 
+  if (auth.kind === "checking") {
+    return (
+      <div className="mx-auto max-w-3xl flex items-center justify-center h-[40vh] text-sm text-ink-500">
+        Checking access…
+      </div>
+    );
+  }
+
+  if (auth.kind === "signed_out") {
+    return <SignedOutGate skillId={skillId} skillName={skillName} />;
+  }
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5">
       <div className="flex flex-col h-[70vh] min-h-[520px] border border-ink-200 bg-white">
         <div className="flex items-center justify-between border-b border-ink-200 px-5 py-3">
           <div className="flex items-center gap-3">
@@ -121,6 +208,14 @@ export default function ChatRoom({
         </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6 space-y-4">
+        {showReuseBanner && reusableReport && (
+          <ReuseBanner
+            report={reusableReport}
+            onAccept={acceptReuse}
+            onDecline={declineReuse}
+          />
+        )}
+
         {transcript.length === 0 && loading && (
           <TypingBubble advisorPortraitUrl={advisorPortraitUrl} />
         )}
@@ -147,8 +242,12 @@ export default function ChatRoom({
       </div>
 
         <div className="border-t border-ink-200 bg-ink-50/60">
-          {isDone ? (
-            <DoneFooter skillId={skillId} profile={doneProfile ?? {}} />
+          {isDone && !editingReport ? (
+            <ReviewFooter
+              skillId={skillId}
+              profile={doneProfile ?? {}}
+              onEdit={() => setEditingReport(true)}
+            />
           ) : awaitingChoice && lastBot && lastBot.type === "choice" ? (
             <ChoiceFooter
               message={lastBot}
@@ -162,13 +261,47 @@ export default function ChatRoom({
               value={textDraft}
               onChange={setTextDraft}
               onSubmit={submitText}
-              disabled={loading || !awaitingText}
+              disabled={loading}
+              editMode={isDone && editingReport}
+              onCancelEdit={
+                isDone && editingReport ? () => setEditingReport(false) : undefined
+              }
             />
           )}
         </div>
       </div>
 
-      <SkillPreview skillId={skillId} profile={liveProfile} />
+      <SkillFolderPanel skillId={skillId} />
+    </div>
+  );
+}
+
+function SignedOutGate({
+  skillId,
+  skillName,
+}: {
+  skillId: string;
+  skillName: string;
+}) {
+  return (
+    <div className="mx-auto max-w-xl border border-ink-200 bg-white p-8 text-center">
+      <div className="text-[11px] uppercase tracking-[0.16em] text-ink-500 mb-2">
+        Sign in required
+      </div>
+      <h2 className="text-xl font-medium tracking-tight text-ink-900 mb-3">
+        This is a private room
+      </h2>
+      <p className="text-sm text-ink-600 leading-relaxed mb-6">
+        To configure <span className="font-medium">{skillName}</span> you need an
+        active package. Sign in or pick a tier to continue.
+      </p>
+      <button
+        type="button"
+        onClick={() => openEntryModal(skillId)}
+        className="bg-ink-900 text-ink-50 hover:bg-ink-700 text-sm px-5 py-2.5"
+      >
+        Open sign in →
+      </button>
     </div>
   );
 }
@@ -351,60 +484,98 @@ function TextFooter({
   onChange,
   onSubmit,
   disabled,
+  editMode = false,
+  onCancelEdit,
 }: {
   value: string;
   onChange: (v: string) => void;
   onSubmit: () => void;
   disabled: boolean;
+  editMode?: boolean;
+  onCancelEdit?: () => void;
 }) {
   return (
-    <form
-      className="p-3 flex items-end gap-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit();
-      }}
-    >
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            onSubmit();
-          }
+    <div>
+      {editMode && (
+        <div className="flex items-center justify-between border-b border-ink-200 bg-amber-50 px-4 py-2">
+          <span className="text-xs text-amber-900">
+            Tell me what you'd like to change — I'll adjust and show you the updated report.
+          </span>
+          {onCancelEdit && (
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              className="text-xs text-amber-900 underline hover:no-underline"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      )}
+      <form
+        className="p-3 flex items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
         }}
-        disabled={disabled}
-        rows={1}
-        placeholder={disabled ? "Working…" : "Type your answer — Enter to send, Shift+Enter for a new line"}
-        className="flex-1 resize-none border border-ink-300 bg-white px-3.5 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:border-ink-900 disabled:opacity-50"
-      />
-      <button
-        type="submit"
-        disabled={disabled || value.trim().length === 0}
-        className="bg-ink-900 text-ink-50 hover:bg-ink-700 disabled:opacity-40 disabled:cursor-not-allowed text-sm px-4 py-2.5"
       >
-        Send
-      </button>
-    </form>
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onSubmit();
+            }
+          }}
+          disabled={disabled}
+          rows={1}
+          placeholder={
+            disabled
+              ? "Working…"
+              : editMode
+                ? "e.g. change the CRM to HubSpot"
+                : "Type your answer — Enter to send, Shift+Enter for a new line"
+          }
+          className="flex-1 resize-none border border-ink-300 bg-white px-3.5 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:border-ink-900 disabled:opacity-50"
+        />
+        <button
+          type="submit"
+          disabled={disabled || value.trim().length === 0}
+          className="bg-ink-900 text-ink-50 hover:bg-ink-700 disabled:opacity-40 disabled:cursor-not-allowed text-sm px-4 py-2.5"
+        >
+          Send
+        </button>
+      </form>
+    </div>
   );
 }
 
-function DoneFooter({
+function ReviewFooter({
   skillId,
   profile,
+  onEdit,
 }: {
   skillId: string;
   profile: Record<string, unknown>;
+  onEdit: () => void;
 }) {
-  const [downloading, setDownloading] = useState(false);
+  const [forging, setForging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  async function generate() {
-    setDownloading(true);
+  async function forge() {
+    setForging(true);
     setError(null);
     try {
+      const template = getTemplate(skillId);
+      const khaiVan = template ? getKhaiVanSkill(template.khaiVanSkillId) : null;
+      if (template && khaiVan) {
+        const version = nextReportVersion(khaiVan.id);
+        const rendered = renderReport(khaiVan, profile, { version });
+        upsertReport({ ...rendered, status: "confirmed" });
+      }
+
       const res = await fetch("/api/finalize", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -430,9 +601,9 @@ function DoneFooter({
       URL.revokeObjectURL(url);
       setDone(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not generate the skill.");
+      setError(err instanceof Error ? err.message : "Could not forge the skill.");
     } finally {
-      setDownloading(false);
+      setForging(false);
     }
   }
 
@@ -441,20 +612,31 @@ function DoneFooter({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <p className="text-sm text-ink-600">
           {done
-            ? "Downloaded. Drop the folder into your agent's skills directory and reload."
-            : "Ready to build your skill folder from this configuration."}
+            ? "Forged and downloaded. Drop the folder into your agent's skills directory and reload."
+            : "Review the report on the right. Confirm to hand off to Skill Forge, or ask to change something."}
         </p>
-        <button
-          onClick={generate}
-          disabled={downloading}
-          className="bg-ink-900 text-ink-50 hover:bg-ink-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm px-5 py-2.5 whitespace-nowrap"
-        >
-          {downloading
-            ? "Generating…"
-            : done
-              ? "Download again ↓"
-              : "Generate skill folder →"}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={onEdit}
+            disabled={forging}
+            className="border border-ink-300 bg-white hover:border-ink-900 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-ink-800 px-4 py-2.5 whitespace-nowrap"
+          >
+            Change something
+          </button>
+          <button
+            type="button"
+            onClick={forge}
+            disabled={forging}
+            className="bg-ink-900 text-ink-50 hover:bg-ink-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm px-5 py-2.5 whitespace-nowrap"
+          >
+            {forging
+              ? "Forging…"
+              : done
+                ? "Forge again ↓"
+                : "Forge my skill →"}
+          </button>
+        </div>
       </div>
       {error && (
         <div className="border border-red-300 bg-red-50 text-red-800 text-sm px-3 py-2">
@@ -462,5 +644,223 @@ function DoneFooter({
         </div>
       )}
     </div>
+  );
+}
+
+function ReuseBanner({
+  report,
+  onAccept,
+  onDecline,
+}: {
+  report: Report;
+  onAccept: () => void;
+  onDecline: () => void;
+}) {
+  const savedAgo = formatRelative(report.updatedAt);
+  const slotCount = Object.keys(report.data).length;
+  return (
+    <div className="border border-accent-300 bg-accent-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex-1">
+        <p className="text-sm text-ink-900 font-medium">
+          I found your answers from a previous discovery ({slotCount} slots, saved{" "}
+          {savedAgo}).
+        </p>
+        <p className="text-xs text-ink-600 mt-0.5">
+          Reuse them and skip straight to review, or start a fresh interview.
+        </p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={onDecline}
+          className="text-sm text-ink-700 underline hover:no-underline"
+        >
+          Start fresh
+        </button>
+        <button
+          type="button"
+          onClick={onAccept}
+          className="bg-ink-900 text-ink-50 hover:bg-ink-700 text-sm px-3 py-1.5 whitespace-nowrap"
+        >
+          Reuse answers →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function formatRelative(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "recently";
+  const diff = Date.now() - then;
+  const mins = Math.round(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} hr ago`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function SkillFolderPanel({ skillId }: { skillId: string }) {
+  const template = useMemo(() => getTemplate(skillId), [skillId]);
+  const khaiVanSkillId = template?.khaiVanSkillId ?? null;
+  const [versions, setVersions] = useState<Report[]>([]);
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!khaiVanSkillId) return;
+    const refresh = () => setVersions(listReportsLocal(khaiVanSkillId));
+    refresh();
+    window.addEventListener(REPORTS_UPDATED_EVENT, refresh);
+    return () => window.removeEventListener(REPORTS_UPDATED_EVENT, refresh);
+  }, [khaiVanSkillId]);
+
+  async function reDownload(report: Report) {
+    if (downloading) return;
+    setDownloading(report.id);
+    try {
+      const res = await fetch("/api/finalize", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ skillId, profile: report.data }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const disposition = res.headers.get("content-disposition") ?? "";
+      const match = /filename="([^"]+)"/.exec(disposition);
+      const filename = match?.[1] ?? `${skillId}-v${report.version}.zip`;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // swallow — user can retry
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  return (
+    <aside className="flex flex-col h-[70vh] min-h-[520px] border border-ink-200 bg-ink-50/40">
+      <div className="px-5 py-3.5 border-b border-ink-200 bg-white">
+        <div className="flex items-baseline justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <FolderIcon />
+            <div className="text-sm text-ink-900 font-medium tracking-tight">
+              Skill folder
+            </div>
+          </div>
+          <div className="text-[11px] uppercase tracking-[0.14em] text-ink-500">
+            {versions.length} {versions.length === 1 ? "version" : "versions"}
+          </div>
+        </div>
+        <p className="text-[11px] text-ink-500 mt-1 leading-snug">
+          Every time you forge, a new version lands here.
+        </p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {versions.length === 0 ? (
+          <EmptyFolderState />
+        ) : (
+          versions.map((v) => (
+            <VersionCard
+              key={v.id}
+              report={v}
+              downloading={downloading === v.id}
+              onRedownload={() => void reDownload(v)}
+            />
+          ))
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function EmptyFolderState() {
+  return (
+    <div className="flex flex-col items-center justify-center text-center py-12 px-4">
+      <div className="w-12 h-12 border-2 border-dashed border-ink-300 flex items-center justify-center mb-3">
+        <FolderIcon />
+      </div>
+      <p className="text-sm text-ink-600 font-medium">Empty folder</p>
+      <p className="text-xs text-ink-500 leading-relaxed mt-1 max-w-[220px]">
+        Finish the interview and forge your first skill — all versions will live here.
+      </p>
+    </div>
+  );
+}
+
+function VersionCard({
+  report,
+  downloading,
+  onRedownload,
+}: {
+  report: Report;
+  downloading: boolean;
+  onRedownload: () => void;
+}) {
+  const slotCount = Object.keys(report.data).length;
+  return (
+    <div className="border border-ink-200 bg-white">
+      <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-ink-100">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono uppercase bg-ink-900 text-ink-50 px-1.5 py-0.5">
+              v{report.version}
+            </span>
+            <span
+              className={`text-[10px] uppercase tracking-[0.14em] ${
+                report.status === "confirmed" ? "text-emerald-600" : "text-amber-600"
+              }`}
+            >
+              {report.status}
+            </span>
+          </div>
+          <div className="text-[11px] text-ink-500 mt-1">
+            {formatRelative(report.updatedAt)} · {slotCount} slots
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onRedownload}
+          disabled={downloading}
+          className="text-xs text-ink-700 hover:text-ink-900 border border-ink-200 hover:border-ink-900 px-2.5 py-1 disabled:opacity-50 whitespace-nowrap"
+        >
+          {downloading ? "…" : "↓ .zip"}
+        </button>
+      </div>
+      <div className="px-4 py-2 text-[10px] uppercase tracking-[0.14em] text-ink-400">
+        Files
+      </div>
+      <ul className="px-4 pb-3 space-y-0.5 font-mono text-[11px] text-ink-700">
+        <li>SKILL.md</li>
+        <li>README.md</li>
+        <li>config.json</li>
+      </ul>
+    </div>
+  );
+}
+
+function FolderIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="text-ink-600"
+      aria-hidden
+    >
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+    </svg>
   );
 }

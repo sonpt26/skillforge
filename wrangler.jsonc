@@ -10,8 +10,16 @@
     "not_found_handling": "404-page"
   },
   "vars": {
-    "SKILLFORGE_PROVIDER": "deepseek"
+    "SKILLFORGE_PROVIDER": "deepseek",
+    "SKILLFORGE_MOCK_MODE": "true"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "skillforge-db",
+      "database_id": "52c8d3e4-28b1-4c7e-a8c5-9cd74b569122"
+    }
+  ],
   "observability": {
     "enabled": true
   }

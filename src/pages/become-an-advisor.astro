@@ -1,0 +1,174 @@
+---
+import Layout from "../layouts/Layout.astro";
+import AdvisorApplicationForm from "../components/AdvisorApplicationForm";
+import { experts } from "../data/experts";
+import { templates as skillTemplates } from "../data/skill-templates";
+
+const featured = experts.slice(0, 4);
+
+function templatesByExpert(expertId: string): number {
+  return skillTemplates.filter((t) => t.expertId === expertId).length;
+}
+
+function compact(n: number): string {
+  if (n >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + "k";
+  return new Intl.NumberFormat("en-US").format(n);
+}
+---
+
+<Layout
+  title="Become a Skillforge advisor"
+  description="Turn your playbook into a personalized AI skill serious teams will use. Keep your work, earn every time it ships."
+>
+  <section class="max-w-6xl mx-auto px-6 pt-14 pb-12">
+    <div class="max-w-3xl">
+      <span class="text-[11px] uppercase tracking-[0.18em] text-accent-600">
+        For domain experts
+      </span>
+      <h1
+        class="text-4xl md:text-5xl font-medium tracking-tight text-ink-900 mt-3 leading-[1.05]"
+      >
+        Turn your playbook into a skill<br />
+        serious teams will actually use.
+      </h1>
+      <p class="text-base text-ink-600 leading-relaxed mt-5 max-w-2xl">
+        Skillforge is a curated platform where senior operators package their
+        hard-won expertise into personalized AI skills. You keep your playbook.
+        We handle infrastructure, matchmaking, and payments — and send
+        customers your way.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-12">
+      {
+        [
+          {
+            number: "01",
+            title: "Own your playbook",
+            body: "Your templates stay under your author tag. No lock-in — take your work elsewhere anytime.",
+          },
+          {
+            number: "02",
+            title: "Revenue that scales",
+            body: "70 / 30 split in your favor. Six-month passes and lifetime tiers compound every time a customer returns.",
+          },
+          {
+            number: "03",
+            title: "Serious buyers only",
+            body: "We keep the roster curated and the buyers qualified. No race to the bottom, no marketplace sprawl.",
+          },
+        ].map((b) => (
+          <div class="border border-ink-200 bg-white p-5">
+            <div class="text-accent-500 text-xl font-medium mb-2">{b.number}</div>
+            <h3 class="text-sm font-medium text-ink-900 mb-1.5">{b.title}</h3>
+            <p class="text-xs text-ink-600 leading-relaxed">{b.body}</p>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="bg-ink-50/60 border-y border-ink-200">
+    <div class="max-w-6xl mx-auto px-6 py-14">
+      <div class="flex items-baseline justify-between gap-4 mb-6 flex-wrap">
+        <h2 class="text-xl md:text-2xl font-medium tracking-tight text-ink-900">
+          Advisors already on Skillforge
+        </h2>
+        <a
+          href="/#catalog"
+          class="text-xs text-ink-600 hover:text-ink-900 underline hover:no-underline"
+        >
+          Browse the full catalog →
+        </a>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {
+          featured.map((e) => (
+            <a
+              href={`/advisors/${e.id}`}
+              class="group border border-ink-200 bg-white hover:border-ink-900 transition overflow-hidden flex flex-col"
+            >
+              <div class="h-56 bg-ink-100 overflow-hidden">
+                <img
+                  src={e.heroPortraitUrl ?? e.portraitUrl}
+                  alt={e.name}
+                  loading="lazy"
+                  class="w-full h-full object-cover object-top group-hover:scale-[1.02] transition duration-300"
+                />
+              </div>
+              <div class="p-4 flex flex-col flex-1">
+                <h3 class="text-sm font-medium text-ink-900 tracking-tight">
+                  {e.name}
+                </h3>
+                <p class="text-[11px] text-ink-500 mt-0.5 line-clamp-2 min-h-[2.4em]">
+                  {e.title}
+                </p>
+                <div class="flex items-center gap-2 mt-2 text-[10px] uppercase tracking-[0.12em] text-ink-500">
+                  <span class="text-accent-500">★</span>
+                  <span class="text-ink-700 font-medium">
+                    {e.stats.avgRating.toFixed(1)}
+                  </span>
+                  <span class="text-ink-300">·</span>
+                  <span>{compact(e.stats.usersHelped)}+ teams</span>
+                </div>
+                <div class="flex items-center justify-between mt-3 pt-3 border-t border-ink-100 text-[10px] uppercase tracking-[0.14em] text-ink-400">
+                  <span>
+                    {templatesByExpert(e.id)} template
+                    {templatesByExpert(e.id) === 1 ? "" : "s"}
+                  </span>
+                  <span class="text-ink-600 group-hover:text-ink-900 transition">
+                    View profile →
+                  </span>
+                </div>
+              </div>
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="max-w-6xl mx-auto px-6 py-16">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 items-start">
+      <div>
+        <span class="text-[11px] uppercase tracking-[0.18em] text-accent-600">
+          Apply to join
+        </span>
+        <h2
+          class="text-2xl md:text-3xl font-medium tracking-tight text-ink-900 mt-2"
+        >
+          Tell us about your playbook.
+        </h2>
+        <p class="text-sm text-ink-600 mt-4 leading-relaxed max-w-md">
+          We review every application personally. If there's a fit, the next
+          step is a 30-minute call with one of our platform leads.
+        </p>
+        <ul class="mt-6 space-y-2.5">
+          <li class="text-sm text-ink-700 leading-relaxed flex gap-2.5">
+            <span class="text-accent-500 mt-[2px]">✓</span>
+            <span>7+ years of hands-on experience in your specialty</span>
+          </li>
+          <li class="text-sm text-ink-700 leading-relaxed flex gap-2.5">
+            <span class="text-accent-500 mt-[2px]">✓</span>
+            <span>
+              A concrete playbook you want to package — not just high-level
+              opinions
+            </span>
+          </li>
+          <li class="text-sm text-ink-700 leading-relaxed flex gap-2.5">
+            <span class="text-accent-500 mt-[2px]">✓</span>
+            <span>
+              First template goes live within 2 weeks of acceptance
+            </span>
+          </li>
+          <li class="text-sm text-ink-700 leading-relaxed flex gap-2.5">
+            <span class="text-accent-500 mt-[2px]">✓</span>
+            <span>No exclusivity — run your own practice alongside</span>
+          </li>
+        </ul>
+      </div>
+      <AdvisorApplicationForm client:load />
+    </div>
+  </section>
+</Layout>
+

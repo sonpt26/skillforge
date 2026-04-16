@@ -24,3 +24,9 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# claude code agent metadata
+.claude/
+
+# local planning notes (not part of the codebase)
+new prompt

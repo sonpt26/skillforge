@@ -1,5 +1,7 @@
 ---
 import "../styles/global.css";
+import EntryModalMount from "../components/EntryModalMount";
+import { skills } from "../data/skills";
 
 interface Props {
   title?: string;
@@ -35,6 +37,12 @@ const {
           <a href="/#catalog" class="hover:text-ink-900 transition">Catalog</a>
           <a href="/#testimonials" class="hover:text-ink-900 transition">Customers</a>
           <a
+            href="/become-an-advisor"
+            class="hover:text-ink-900 transition"
+          >
+            Become an advisor
+          </a>
+          <a
             href="/#catalog"
             class="px-3.5 py-1.5 rounded-md bg-ink-900 text-ink-50 hover:bg-ink-700 transition text-sm"
           >
@@ -47,6 +55,8 @@ const {
     <main class="flex-1">
       <slot />
     </main>
+
+    <EntryModalMount client:load skills={skills} />
 
     <footer class="border-t border-ink-200/80 mt-24">
       <div class="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-sm text-ink-500">

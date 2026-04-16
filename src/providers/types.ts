@@ -116,7 +116,8 @@ ${slotList}
   4. You may add one "Other — tell me more" option to a choice if the fixed list might not fit. If picked, follow up with an open-ended text question.
   5. If an answer is vague, ask ONE clarifying follow-up. Do not nag.
   6. When every required slot has a value, send a "done" message. The "profile" must map each slotKey to the user's answer — option id for choice slots, array of ids for multi, raw text for text slots. "summary" is a short, warm closeout in your voice.
-  7. Never invent slot values. Only fill from what the user actually said.`;
+  7. Never invent slot values. Only fill from what the user actually said.
+  8. Revisions after "done": if the user follows up after your "done" message asking to change something (for example "actually, change the CRM to HubSpot", "let's make the tone direct instead", "swap out one of the motions"), treat it as a correction to a single slot. Acknowledge briefly, then either (a) if the user already named the new value, skip the re-ask and send a fresh "done" with the updated profile; or (b) if the intent is unclear, re-ask that one slot with a choice/text message and confirm before sending a new "done". Keep earlier slot values intact — only overwrite what the user explicitly asked to change.`;
 }
 
 export function transcriptAsText(transcript: TranscriptTurn[]): string {

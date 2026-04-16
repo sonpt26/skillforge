@@ -1,43 +1,147 @@
 ---
 import Layout from "../../../layouts/Layout.astro";
 import ChatRoom from "../../../components/ChatRoom";
-import AdvisorHero from "../../../components/AdvisorHero.astro";
 import { skills } from "../../../data/skills";
+import { getTemplate } from "../../../data/skill-templates";
 
 export function getStaticPaths() {
   return skills.map((s) => ({ params: { skill: s.id }, props: { skill: s } }));
 }
 
 const { skill } = Astro.props;
+const template = getTemplate(skill.id);
+const advisor = skill.advisor;
+const advisorId = template?.expertId ?? "";
+const firstName = advisor.name.split(" ")[0];
+
+function compact(n: number): string {
+  if (n >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + "k";
+  return new Intl.NumberFormat("en-US").format(n);
+}
 ---
 
 <Layout title={`${skill.name} — Private interview room`}>
-  <section class="max-w-6xl mx-auto px-6 py-16">
-    <a href="/#catalog" class="text-xs text-ink-500 hover:text-ink-800 transition">
+  <section class="max-w-6xl mx-auto px-6 py-10">
+    <a
+      href="/#catalog"
+      class="text-xs text-ink-500 hover:text-ink-800 transition"
+    >
       ← Back to catalog
     </a>
 
-    <div class="mt-6 mb-8">
+    <div class="mt-5 mb-4">
       <span class="text-[11px] uppercase tracking-[0.18em] text-ink-500">
         {skill.category} · Private Room
       </span>
-      <h1 class="text-2xl md:text-3xl font-medium tracking-tight text-ink-900 mt-2 mb-2">
+      <h1
+        class="text-2xl md:text-3xl font-medium tracking-tight text-ink-900 mt-1.5"
+      >
         {skill.name}
       </h1>
-      <p class="text-sm text-ink-600 leading-relaxed max-w-2xl">
-        A short private interview with {skill.advisor.name}'s playbook.
-        Nothing is shared outside this room.
-      </p>
     </div>
 
-    <AdvisorHero advisor={skill.advisor} />
+    <details class="group mb-6 border border-ink-200 bg-white">
+      <summary
+        class="list-none cursor-pointer flex items-center gap-4 px-5 py-3.5 hover:bg-ink-50/60 transition"
+      >
+        <img
+          src={advisor.portraitUrl}
+          alt={advisor.name}
+          loading="lazy"
+          class="w-10 h-10 rounded-full object-cover border border-ink-200 shrink-0"
+        />
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-ink-900 tracking-tight truncate">
+            {advisor.name}
+          </div>
+          <div class="text-[11px] text-ink-500 truncate">{advisor.title}</div>
+        </div>
+        <div
+          class="hidden sm:flex items-center gap-1.5 text-[11px] text-ink-500"
+        >
+          <span class="text-accent-500">★</span>
+          <span class="text-ink-700 font-medium">
+            {advisor.stats.avgRating.toFixed(1)}
+          </span>
+          <span>· {compact(advisor.stats.reviewCount)} reviews</span>
+        </div>
+        {advisorId && (
+          <a
+            href={`/advisors/${advisorId}`}
+            class="hidden md:inline text-xs text-ink-600 hover:text-ink-900 border border-ink-200 hover:border-ink-900 px-3 py-1.5 transition whitespace-nowrap"
+            onclick="arguments[0].stopPropagation()"
+          >
+            View full profile →
+          </a>
+        )}
+        <span
+          class="text-ink-400 group-open:rotate-180 transition-transform"
+          aria-hidden
+        >
+          ▾
+        </span>
+      </summary>
+
+      <div class="border-t border-ink-200 px-5 py-5 space-y-4 bg-ink-50/30">
+        <p class="text-sm text-ink-700 leading-relaxed max-w-3xl">
+          {advisor.bio}
+        </p>
+
+        {
+          advisor.approach && (
+            <blockquote class="text-sm text-ink-700 leading-relaxed italic border-l-2 border-accent-500 pl-3.5 max-w-3xl">
+              {advisor.approach}
+            </blockquote>
+          )
+        }
+
+        {
+          advisor.specialties && advisor.specialties.length > 0 && (
+            <div class="flex flex-wrap gap-1.5">
+              {advisor.specialties.map((s) => (
+                <span class="text-[11px] border border-ink-200 bg-white px-2 py-0.5 text-ink-600">
+                  {s}
+                </span>
+              ))}
+            </div>
+          )
+        }
+
+        <div class="sm:hidden flex items-center gap-1.5 text-[11px] text-ink-500">
+          <span class="text-accent-500">★</span>
+          <span class="text-ink-700 font-medium">
+            {advisor.stats.avgRating.toFixed(1)}
+          </span>
+          <span>· {compact(advisor.stats.reviewCount)} reviews · {advisor.yearsExperience}+ yrs</span>
+        </div>
+
+        {advisorId && (
+          <a
+            href={`/advisors/${advisorId}`}
+            class="inline-block text-xs text-ink-600 hover:text-ink-900 underline hover:no-underline"
+          >
+            View {firstName}'s full profile, credentials, and all reviews →
+          </a>
+        )}
+      </div>
+    </details>
 
     <ChatRoom
       client:load
       skillId={skill.id}
       skillName={skill.name}
-      advisorName={skill.advisor.name}
-      advisorPortraitUrl={skill.advisor.portraitUrl}
+      advisorName={advisor.name}
+      advisorPortraitUrl={advisor.portraitUrl}
     />
   </section>
 </Layout>
+
+<style>
+  /* remove default triangle marker cross-browser */
+  details > summary {
+    list-style: none;
+  }
+  details > summary::-webkit-details-marker {
+    display: none;
+  }
+</style>
