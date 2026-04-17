@@ -45,13 +45,23 @@ export type BotMessageResponse = z.infer<typeof BotMessageResponseSchema>;
 
 export type ProviderName = "anthropic" | "deepseek";
 
+export type TokenUsage = {
+  input: number;
+  output: number;
+};
+
+export type InterviewResult = {
+  message: BotMessageResponse;
+  usage?: TokenUsage;
+};
+
 export interface Provider {
   name: ProviderName;
   interview(
     schema: SkillSchema,
     advisor: Advisor,
     transcript: TranscriptTurn[],
-  ): Promise<BotMessageResponse>;
+  ): Promise<InterviewResult>;
 }
 
 export class ProviderError extends Error {

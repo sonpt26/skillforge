@@ -1,0 +1,25 @@
+{
+  "name": "skillforge-backend",
+  "private": true,
+  "type": "module",
+  "description": "Standalone Bun + Hono + libsql backend. Serves the same HTTP surface as the Cloudflare Worker by reusing the business-logic modules under ../src/server and ../src/providers.",
+  "scripts": {
+    "dev": "bun --watch src/app.ts",
+    "start": "bun src/app.ts",
+    "migrate": "bun src/migrate.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.88.0",
+    "@libsql/client": "^0.15.0",
+    "fflate": "^0.8.2",
+    "hono": "^4.6.14",
+    "openai": "^6.34.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251001.0",
+    "@types/bun": "^1.1.13",
+    "typescript": "^5.9.3"
+  }
+}

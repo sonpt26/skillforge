@@ -11,7 +11,8 @@
   },
   "vars": {
     "SKILLFORGE_PROVIDER": "deepseek",
-    "SKILLFORGE_MOCK_MODE": "true"
+    "SKILLFORGE_MOCK_MODE": "true",
+    "ADMIN_EMAILS": "hungkescy@gmail.com,admin@skillforge.local"
   },
   "d1_databases": [
     {

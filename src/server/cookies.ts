@@ -19,10 +19,27 @@ export function parseCookies(header: string | null): Record<string, string> {
   return out;
 }
 
-export function sessionCookie(sessionId: string, maxAgeSec: number): string {
-  return `${SESSION_COOKIE}=${encodeURIComponent(sessionId)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAgeSec}`;
+export type CookieOptions = { secure?: boolean };
+
+export function sessionCookie(
+  sessionId: string,
+  maxAgeSec: number,
+  opts: CookieOptions = { secure: true },
+): string {
+  const secure = opts.secure === false ? "" : "; Secure";
+  return `${SESSION_COOKIE}=${encodeURIComponent(sessionId)}; Path=/; HttpOnly${secure}; SameSite=Lax; Max-Age=${maxAgeSec}`;
 }
 
-export function clearSessionCookie(): string {
-  return `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
+export function clearSessionCookie(opts: CookieOptions = { secure: true }): string {
+  const secure = opts.secure === false ? "" : "; Secure";
+  return `${SESSION_COOKIE}=; Path=/; HttpOnly${secure}; SameSite=Lax; Max-Age=0`;
+}
+
+/** True when the request is plain http (dev over localhost). */
+export function isInsecureRequest(request: Request): boolean {
+  try {
+    return new URL(request.url).protocol === "http:";
+  } catch {
+    return false;
+  }
 }

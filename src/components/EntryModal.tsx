@@ -184,11 +184,11 @@ export default function EntryModal({ open, skill, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-sm flex items-center justify-center px-4 py-6"
+      className="fixed inset-0 z-50 bg-ink-900/75 backdrop-blur-sm flex items-center justify-center px-2 sm:px-4 py-3 sm:py-6"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-7xl max-h-[92vh] bg-white border border-ink-200 shadow-2xl grid grid-cols-1 md:grid-cols-[3fr_2fr] overflow-hidden"
+        className="relative w-full max-w-7xl max-h-[96vh] sm:max-h-[92vh] bg-white border border-ink-200 shadow-2xl grid grid-cols-1 md:grid-cols-[3fr_2fr] overflow-y-auto md:overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -202,7 +202,7 @@ export default function EntryModal({ open, skill, onClose }: Props) {
 
         <AdvisorPanel skill={skill} />
 
-        <div className="p-8 md:p-10 overflow-y-auto bg-white flex flex-col">
+        <div className="p-5 sm:p-7 md:p-10 md:overflow-y-auto bg-white flex flex-col">
           {phase.kind === "email" && (
             <EmailStep
               email={email}
@@ -259,16 +259,16 @@ function AdvisorPanel({ skill }: { skill: Skill }) {
   const a = skill.advisor;
   const fullStars = Math.round(a.stats.avgRating);
   return (
-    <div className="bg-ink-900 text-ink-50 overflow-y-auto max-h-[92vh]">
+    <div className="bg-ink-900 text-ink-50 md:overflow-y-auto md:max-h-[92vh]">
       <div className="grid grid-cols-1 md:grid-cols-3 border-b border-ink-800">
-        <div className="md:col-span-2 bg-ink-800 h-[420px] md:h-[480px] overflow-hidden">
+        <div className="md:col-span-2 bg-ink-900 h-56 sm:h-72 md:h-[480px] overflow-hidden flex items-center justify-center">
           <img
             src={a.heroPortraitUrl ?? a.portraitUrl}
             alt={a.name}
-            className="w-full h-full object-cover object-top"
+            className="w-full h-full object-contain"
           />
         </div>
-        <div className="md:col-span-1 p-6 flex flex-col gap-3 border-t md:border-t-0 md:border-l border-ink-800">
+        <div className="md:col-span-1 p-5 sm:p-6 flex flex-col gap-3 border-t md:border-t-0 md:border-l border-ink-800">
           <div className="text-[11px] uppercase tracking-[0.18em] text-accent-400">
             {skill.category} · Advisor
           </div>
@@ -311,7 +311,7 @@ function AdvisorPanel({ skill }: { skill: Skill }) {
         </div>
       </div>
 
-      <div className="p-8 space-y-7">
+      <div className="p-5 sm:p-7 md:p-8 space-y-7">
         {a.specialties && a.specialties.length > 0 && (
           <Section heading="Specialties">
             <div className="flex flex-wrap gap-1.5">
@@ -773,7 +773,7 @@ function StepHeader({ step, label }: { step: number; label: string }) {
 function QrPlaceholder({ label }: { label: string }) {
   return (
     <div className="shrink-0 flex flex-col items-center">
-      <div className="w-44 h-44 bg-white border border-ink-200 grid grid-cols-7 grid-rows-7 gap-1 p-2.5">
+      <div className="w-32 h-32 sm:w-40 sm:h-40 md:w-44 md:h-44 bg-white border border-ink-200 grid grid-cols-7 grid-rows-7 gap-1 p-2 sm:p-2.5">
         {Array.from({ length: 49 }).map((_, i) => {
           const row = Math.floor(i / 7);
           const col = i % 7;

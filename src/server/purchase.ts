@@ -11,6 +11,7 @@
  */
 import { getTemplate } from "../data/skill-templates";
 import { findOrCreateUser, generateId } from "./auth";
+import { resolvePriceForExpert } from "./pricing-db";
 import { TIERS, type Tier, type TierId } from "./tiers";
 
 export type PurchaseRow = {
@@ -57,9 +58,21 @@ export async function createPendingPurchase(
   tier: TierId,
   skillId: string,
 ): Promise<CreatePurchaseResult | null> {
+  const template = getTemplate(skillId);
+  if (!template) return null;
   const scope = resolveScope(tier, skillId);
   const def = TIERS[tier];
   if (!scope || !def) return null;
+
+  // Per-advisor override applies to one_time + advisor_6mo only. Lifetime
+  // (scope='all') crosses all advisors, so no single expert's price applies.
+  let priceCents = def.priceCents;
+  let currency: string = def.currency;
+  if (scope.scopeType !== "all") {
+    const resolved = await resolvePriceForExpert(db, template.expertId, tier);
+    priceCents = resolved.priceCents;
+    currency = resolved.currency;
+  }
 
   const id = generateId("pur");
   const now = Date.now();
@@ -72,7 +85,7 @@ export async function createPendingPurchase(
     .prepare(
       `INSERT INTO purchases
        (id, email, tier, scope_type, scope_id, amount_cents, currency, status, created_at, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'USD', 'pending', ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
     )
     .bind(
       id,
@@ -80,7 +93,8 @@ export async function createPendingPurchase(
       tier,
       scope.scopeType,
       scope.scopeId,
-      def.priceCents,
+      priceCents,
+      currency,
       createdAt,
       expiresAt,
     )
@@ -93,15 +107,15 @@ export async function createPendingPurchase(
     tier,
     scope_type: scope.scopeType,
     scope_id: scope.scopeId,
-    amount_cents: def.priceCents,
-    currency: "USD",
+    amount_cents: priceCents,
+    currency,
     status: "pending",
     payment_ref: null,
     created_at: createdAt,
     paid_at: null,
     expires_at: expiresAt,
   };
-  return { purchase, tier: def };
+  return { purchase, tier: { ...def, priceCents, currency: currency as "USD" } };
 }
 
 /**

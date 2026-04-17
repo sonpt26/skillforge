@@ -49,6 +49,72 @@ const {
             Configure a skill
           </a>
         </nav>
+
+        <details class="md:hidden relative mobile-menu group">
+          <summary
+            class="list-none cursor-pointer p-2 -mr-2 text-ink-700 hover:text-ink-900"
+            aria-label="Open menu"
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="group-open:hidden"
+            >
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="hidden group-open:block"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </summary>
+          <div
+            class="absolute right-0 top-full mt-1 w-60 bg-white border border-ink-200 shadow-lg z-50"
+          >
+            <a
+              href="/#features"
+              class="block px-4 py-3 text-sm text-ink-700 hover:bg-ink-50 border-b border-ink-100"
+              >Features</a
+            >
+            <a
+              href="/#catalog"
+              class="block px-4 py-3 text-sm text-ink-700 hover:bg-ink-50 border-b border-ink-100"
+              >Catalog</a
+            >
+            <a
+              href="/#testimonials"
+              class="block px-4 py-3 text-sm text-ink-700 hover:bg-ink-50 border-b border-ink-100"
+              >Customers</a
+            >
+            <a
+              href="/become-an-advisor"
+              class="block px-4 py-3 text-sm text-ink-700 hover:bg-ink-50 border-b border-ink-100"
+              >Become an advisor</a
+            >
+            <a
+              href="/#catalog"
+              class="block px-4 py-3 text-sm font-medium text-ink-50 bg-ink-900 hover:bg-ink-700"
+              >Configure a skill →</a
+            >
+          </div>
+        </details>
       </div>
     </header>
 
@@ -57,6 +123,26 @@ const {
     </main>
 
     <EntryModalMount client:load skills={skills} />
+
+    <style>
+      /* remove default triangle marker on the mobile-menu summary, cross-browser */
+      details.mobile-menu > summary {
+        list-style: none;
+      }
+      details.mobile-menu > summary::-webkit-details-marker {
+        display: none;
+      }
+    </style>
+
+    <script is:inline>
+      // Close the mobile menu when the user taps outside or navigates.
+      document.addEventListener("click", (e) => {
+        const menu = document.querySelector("details.mobile-menu");
+        if (!menu || !(menu instanceof HTMLDetailsElement)) return;
+        if (!menu.open) return;
+        if (!menu.contains(e.target)) menu.open = false;
+      });
+    </script>
 
     <footer class="border-t border-ink-200/80 mt-24">
       <div class="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-sm text-ink-500">

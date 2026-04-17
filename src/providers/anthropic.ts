@@ -8,7 +8,7 @@ import {
   buildSystemPrompt,
   transcriptAsText,
   ProviderError,
-  type BotMessageResponse,
+  type InterviewResult,
   type Provider,
 } from "./types";
 
@@ -21,7 +21,7 @@ export function createAnthropicProvider(apiKey: string): Provider {
       schema: SkillSchema,
       advisor: Advisor,
       transcript: TranscriptTurn[],
-    ): Promise<BotMessageResponse> {
+    ): Promise<InterviewResult> {
       try {
         const response = await client.messages.parse({
           model: "claude-opus-4-6",
@@ -50,7 +50,13 @@ export function createAnthropicProvider(apiKey: string): Provider {
             "Model did not produce a valid structured message.",
           );
         }
-        return response.parsed_output;
+        const usage = response.usage
+          ? {
+              input: response.usage.input_tokens ?? 0,
+              output: response.usage.output_tokens ?? 0,
+            }
+          : undefined;
+        return { message: response.parsed_output, usage };
       } catch (err) {
         if (err instanceof ProviderError) throw err;
         if (err instanceof Anthropic.APIError) {

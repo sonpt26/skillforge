@@ -89,17 +89,63 @@ export default function ChatRoom({
     if (auth.kind !== "signed_in" || didInit.current) return;
     didInit.current = true;
 
-    if (khaiVanSkillId) {
-      const reusable = findReusableReportLocal(khaiVanSkillId);
-      if (reusable) {
-        setReusableReport(reusable);
-        setShowReuseBanner(true);
-        return;
+    void (async () => {
+      // First: try to resume a server-side chat session. If we find one with
+      // transcript already populated, hydrate the UI from it — no need to
+      // replay /api/interview for the intro turn.
+      try {
+        const res = await fetch(
+          `/api/chat/session?skillId=${encodeURIComponent(skillId)}`,
+        );
+        if (res.ok) {
+          const data = (await res.json()) as {
+            session: {
+              transcript: TranscriptTurn[];
+              mode: string;
+            } | null;
+          };
+          if (data.session && data.session.transcript.length > 0) {
+            setTranscript(data.session.transcript);
+            return;
+          }
+        }
+      } catch {
+        // fall through to normal start
       }
-    }
 
-    void sendTurn([]);
-  }, [auth.kind, khaiVanSkillId]);
+      // No server session — fall back to the legacy localStorage reuse flow
+      // (will be retired once the folder panel also moves to D1).
+      if (khaiVanSkillId) {
+        const reusable = findReusableReportLocal(khaiVanSkillId);
+        if (reusable) {
+          setReusableReport(reusable);
+          setShowReuseBanner(true);
+          return;
+        }
+      }
+
+      void sendTurn([]);
+    })();
+  }, [auth.kind, khaiVanSkillId, skillId]);
+
+  async function startOver() {
+    if (loading) return;
+    setLoading(true);
+    try {
+      await fetch("/api/chat/session/reset", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ skillId }),
+      });
+      setTranscript([]);
+      setEditingReport(false);
+      setError(null);
+      await sendTurn([]);
+    } catch {
+      setError("Could not start over.");
+      setLoading(false);
+    }
+  }
 
   function acceptReuse() {
     if (!reusableReport) return;
@@ -184,7 +230,7 @@ export default function ChatRoom({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5">
-      <div className="flex flex-col h-[70vh] min-h-[520px] border border-ink-200 bg-white">
+      <div className="flex flex-col h-[65vh] min-h-[440px] lg:h-[70vh] lg:min-h-[520px] border border-ink-200 bg-white">
         <div className="flex items-center justify-between border-b border-ink-200 px-5 py-3">
           <div className="flex items-center gap-3">
             <img
@@ -201,10 +247,23 @@ export default function ChatRoom({
               </div>
             </div>
           </div>
-          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] text-accent-600">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent-500 animate-pulse" />
-            online
-          </span>
+          <div className="flex items-center gap-3">
+            {transcript.length > 1 && (
+              <button
+                type="button"
+                onClick={startOver}
+                disabled={loading}
+                className="text-[11px] text-ink-500 hover:text-ink-900 underline hover:no-underline disabled:opacity-50"
+                title="Archive this session and start a fresh conversation"
+              >
+                Start over
+              </button>
+            )}
+            <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] text-accent-600">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent-500 animate-pulse" />
+              online
+            </span>
+          </div>
         </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6 space-y-4">
@@ -747,7 +806,7 @@ function SkillFolderPanel({ skillId }: { skillId: string }) {
   }
 
   return (
-    <aside className="flex flex-col h-[70vh] min-h-[520px] border border-ink-200 bg-ink-50/40">
+    <aside className="flex flex-col h-auto max-h-[480px] lg:h-[70vh] lg:max-h-none lg:min-h-[520px] border border-ink-200 bg-ink-50/40">
       <div className="px-5 py-3.5 border-b border-ink-200 bg-white">
         <div className="flex items-baseline justify-between gap-2">
           <div className="flex items-center gap-2">
